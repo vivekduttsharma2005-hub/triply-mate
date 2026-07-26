@@ -61,7 +61,7 @@ DATABASE_URL=postgresql://user:password@localhost:5432/langgraph_memory
 ```bash
 streamlit run frontend.py
 ```
-App runs at `http://localhost:8501`.
+App runs at `https://triply-mate.onrender.com`.
 
 ## 🗺️ How It Works
 
