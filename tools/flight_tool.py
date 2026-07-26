@@ -27,13 +27,19 @@ CITY_TO_IATA = {
 def _extract_route(query: str):
     """Try to pull an origin and destination city from a free-text query."""
     q = query.lower()
-
-    # Pattern: "X to Y" or "from X to Y"
-    match = re.search(r"(?:from\s+)?([a-z\s]+?)\s+to\s+([a-z\s]+)", q)
     origin_city = dest_city = None
+
+    # Pattern A: "to Y from X"  (e.g. "7 day plan to mumbai from delhi")
+    match = re.search(r"\bto\s+([a-z\s]+?)\s+from\s+([a-z\s]+)", q)
     if match:
-        origin_city = match.group(1).strip()
-        dest_city = match.group(2).strip()
+        dest_city = match.group(1).strip()
+        origin_city = match.group(2).strip()
+    else:
+        # Pattern B: "from X to Y" or plain "X to Y"
+        match = re.search(r"(?:from\s+)?([a-z\s]+?)\s+to\s+([a-z\s]+)", q)
+        if match:
+            origin_city = match.group(1).strip()
+            dest_city = match.group(2).strip()
 
     def to_iata(city):
         if not city:
