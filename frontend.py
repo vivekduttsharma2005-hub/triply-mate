@@ -171,7 +171,7 @@ with st.sidebar:
     st.markdown("---")
 
     thread_id = st.text_input(
-        "👤 User ID", value="aarohi_user",
+        "👤 User ID", value="vivek_user",
         help="Your session ID — keeps travel history across queries",
     )
 
