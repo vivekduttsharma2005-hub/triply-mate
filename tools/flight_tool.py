@@ -25,33 +25,66 @@ CITY_TO_IATA = {
 
 
 def _extract_route(query: str):
-    """Try to pull an origin and destination city from a free-text query."""
+    """
+    Find an origin and destination city from free-text, regardless of phrasing.
+
+    Instead of relying on brittle "X to Y" / "to Y from X" regex patterns
+    (which break on any phrasing we didn't anticipate — e.g. "Mumbai trip
+    from Delhi" has no "to" at all), this scans the query for every known
+    city name and uses the position of "from"/"to" keywords relative to
+    each match to decide which one is the origin and which is the
+    destination.
+    """
     q = query.lower()
+
+    # Find every known city mentioned in the query, with its position.
+    mentions = []  # list of (start_index, city_name)
+    for name in CITY_TO_IATA:
+        idx = q.find(name)
+        if idx != -1:
+            mentions.append((idx, name))
+    mentions.sort()
+
+    if not mentions:
+        return None, None
+
+    # Dedupe overlapping mentions (e.g. "delhi" inside "new delhi")
+    deduped = []
+    for idx, name in mentions:
+        if deduped and idx < deduped[-1][0] + len(deduped[-1][1]):
+            if len(name) > len(deduped[-1][1]):
+                deduped[-1] = (idx, name)
+            continue
+        deduped.append((idx, name))
+    mentions = deduped
+
+    from_idx = q.find("from")
+    to_idx = q.find(" to ")  # spaces avoid matching "to" inside other words
+
     origin_city = dest_city = None
 
-    # Pattern A: "to Y from X"  (e.g. "7 day plan to mumbai from delhi")
-    match = re.search(r"\bto\s+([a-z\s]+?)\s+from\s+([a-z\s]+)", q)
-    if match:
-        dest_city = match.group(1).strip()
-        origin_city = match.group(2).strip()
-    else:
-        # Pattern B: "from X to Y" or plain "X to Y"
-        match = re.search(r"(?:from\s+)?([a-z\s]+?)\s+to\s+([a-z\s]+)", q)
-        if match:
-            origin_city = match.group(1).strip()
-            dest_city = match.group(2).strip()
+    if from_idx != -1:
+        after_from = [m for m in mentions if m[0] > from_idx]
+        if after_from:
+            origin_city = after_from[0][1]
+
+    if to_idx != -1:
+        after_to = [m for m in mentions if m[0] > to_idx]
+        if after_to:
+            dest_city = after_to[0][1]
+
+    # Fallback: if we only found one of the two keywords (or neither),
+    # use whatever two distinct cities were mentioned, in the order they
+    # appear, excluding whichever one we already assigned.
+    if origin_city is None or dest_city is None:
+        remaining = [name for _, name in mentions if name not in (origin_city, dest_city)]
+        if origin_city is None and remaining:
+            origin_city = remaining.pop(0)
+        if dest_city is None and remaining:
+            dest_city = remaining.pop(0)
 
     def to_iata(city):
-        if not city:
-            return None
-        city = city.strip()
-        if city in CITY_TO_IATA:
-            return CITY_TO_IATA[city]
-        # try matching any known city contained in the phrase
-        for name, code in CITY_TO_IATA.items():
-            if name in city:
-                return code
-        return None
+        return CITY_TO_IATA.get(city) if city else None
 
     return to_iata(origin_city), to_iata(dest_city)
 
