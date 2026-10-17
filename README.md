@@ -1,90 +1,106 @@
-# ✈️ Triply Mate — AI Travel Booking System
+# ✈️ Triply Mate — AI Travel Planner
 
-A multi-agent AI travel planner built with **LangGraph** and **Streamlit**. Describe your trip in plain language, and four specialized agents collaborate to find flights, hotels, build an itinerary, and produce a final travel plan — all in one live pipeline.
+[![tests](https://github.com/vivekduttsharma2005-hub/triply-mate/actions/workflows/tests.yml/badge.svg)](https://github.com/vivekduttsharma2005-hub/triply-mate/actions/workflows/tests.yml)
 
-## 🚀 Features
+Describe a trip in plain language. A LangGraph pipeline finds flights and hotels **in parallel**, builds an itinerary, **checks the cost against your budget** (and looks for cheaper hotels if it's over), and **asks you a question** if something important is missing — instead of guessing.
 
-- **Multi-agent pipeline** — Flight Agent → Hotel Agent → Itinerary Agent → Final Agent, orchestrated with LangGraph
-- **Live agent status UI** — watch each agent work in real time via Streamlit
-- **Persistent memory** — conversation/session state stored in Postgres via `langgraph-checkpoint-postgres`, so trip context carries across queries for the same user
-- **Web search grounding** — Tavily API for up-to-date travel info
-- **Flight data** — AviationStack API, filtered by origin/destination
-- **Export** — download the generated plan as Markdown or JSON
-- **Trip preferences** — budget style, traveler count, currency
+**Live demo:** https://triply-mate.onrender.com _(free hosting sleeps; the first load can take ~50 s)_
 
-## 🧠 Tech Stack
+## Architecture
 
-| Layer | Tech |
-|---|---|
-| Orchestration | LangGraph |
-| LLM | Groq (LLaMA 3.3 70B) via `langchain-groq` |
-| Web search | Tavily |
-| Flight data | AviationStack |
-| Memory/checkpointing | PostgreSQL |
-| Frontend | Streamlit |
-
-## 📁 Project Structure
-
-```
-triply-mate/
-├── frontend.py          # Streamlit UI
-├── main.py               # LangGraph app definition (agent graph)
-├── tools/
-│   ├── flight_tool.py     # AviationStack flight search
-│   └── tavily_tool.py     # Tavily web search
-├── requirements.txt
-├── .env                   # API keys & DB URL (not committed)
-└── travel_plans/          # Auto-saved generated plans
+```mermaid
+flowchart TD
+    A[parse_query<br/>structured output] --> B{clarify<br/>missing info?}
+    B -- yes --> Q[/ask the user<br/>interrupt + resume/]
+    Q --> B
+    B -- no --> F[flight_agent]
+    B -- no --> H[hotel_agent]
+    F --> I[itinerary_agent<br/>+ weather + web search]
+    H --> I
+    I --> C{budget_checker}
+    C -- over budget, retries < 2 --> R[hotel_retry<br/>cheaper hotels]
+    R --> C
+    C -- within budget, or retries exhausted --> Z[final_agent<br/>+ sources + honest warning]
 ```
 
-## ⚙️ Setup
+## What's real and what's estimated
 
-### 1. Clone and install
+| Data | Source | Note |
+|---|---|---|
+| Airlines / flight status | AviationStack | Free tier covers few routes. **It has no fares.** |
+| Flight **fares** | LLM estimate | Always labelled "(estimate)" in the UI and the plan |
+| Hotels | Tavily web results | Price taken from the snippet when present, otherwise an estimate (labelled) |
+| Attractions, sources | Tavily | Source links are appended by code, never written by the LLM |
+| Weather | Open-Meteo | Only when you give a start date within the next 15 days; otherwise omitted, not invented |
+| Airport codes | `airportsdata` + a small alias table | |
+
+If a tool fails, the plan says so. No flights, hotels or links are fabricated.
+
+## Features
+- **Structured output** — every agent returns a validated Pydantic model (`schemas.py`)
+- **Parallel agents** — flights and hotels run together
+- **Budget loop** — over budget → cheaper hotels, max 2 retries, then an honest "over budget by ₹X" warning
+- **Human-in-the-loop** — missing origin / destination / days → the graph pauses, asks, resumes
+- **Memory** — Postgres checkpointer keyed by `thread_id`; follow-ups like "make it cheaper" see the previous trip
+- **FastAPI backend + Streamlit UI**, `pytest` suite, Docker, GitHub Actions CI
+- **Observability** — per-node timings, LLM-call and token counts, optional Langfuse tracing
+
+## Evaluation
+
+20 prompts in `eval/cases.json` (easy, hard, impossible budgets, typos, missing info, groups, no budget).
+A case passes only if: total ≤ budget **and** itinerary has the right number of days **and** flights/hotels exist
+(impossible budgets pass only if the plan honestly says it is over budget; "missing info" cases pass only if the agent asks the right question).
+
 ```bash
-git clone https://github.com/vivekduttsharma2005-hub/triply-mate.git
-cd triply-mate
-python -m venv .venv
-.venv\Scripts\activate      # Windows
+python eval/run_eval.py --label "Parallel + budget loop" --sleep 5
+```
+
+| Version | Pass rate | Avg latency |
+|---|---|---|
+| Original (sequential, free text) | _run on commit `ac85442`_ | _…_ |
+| Parallel + budget loop + clarify | _run `eval/run_eval.py`_ | _…_ |
+
+_Fill this table with your own numbers. Fares are LLM estimates, so "within budget" means within budget **by estimate**. The optional `--judge` score comes from an LLM and is only a rough signal._
+
+## Setup
+
+```bash
+git clone https://github.com/vivekduttsharma2005-hub/triply-mate.git && cd triply-mate
+python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Environment variables
-Create a `.env` file in the project root:
-```dotenv
-GROQ_API_KEY="your_groq_key"
-AVIATIONSTACK_API_KEY="your_aviationstack_key"
-TAVILY_API_KEY="your_tavily_key"
-DATABASE_URL=postgresql://user:password@localhost:5432/langgraph_memory
+`.env` (never commit it):
+```
+GROQ_API_KEY=...
+GROQ_MODEL=openai/gpt-oss-120b   # optional; Groq retired llama-3.3-70b-versatile in Aug 2026
+TAVILY_API_KEY=...
+AVIATIONSTACK_API_KEY=...
+DATABASE_URL=postgresql://user:password@localhost:5432/langgraph_memory   # optional: falls back to in-memory
+# optional
+TRIPLY_API_KEY=...        # require x-api-key on the API
+LANGFUSE_PUBLIC_KEY=...   LANGFUSE_SECRET_KEY=...
 ```
 
-### 3. Run
+Run (UI only, runs the agents in-process) → http://localhost:8501
 ```bash
 streamlit run frontend.py
 ```
-App runs at `https://triply-mate.onrender.com`.
+Run as two services:
+```bash
+uvicorn api:app --port 8000
+TRIPLY_API_URL=http://localhost:8000 streamlit run frontend.py
+```
+Tests: `pytest -q` · Docker: `docker build -t triply-mate . && docker run -p 8000:8000 --env-file .env triply-mate`
 
-## 🗺️ How It Works
+## Known limitations
+- No fare API: fares are estimates. A real fares source (e.g. Amadeus) is the biggest accuracy upgrade.
+- The budget loop only tries cheaper **hotels** (not flights or fewer days).
+- Costs assume 1 room per 2 travelers, round-trip fares, and `days − 1` nights.
+- AviationStack's free tier is HTTP-only and covers few routes.
+- Memory is per `thread_id`; there is no login, so anyone who knows an ID can reuse it.
 
-1. User describes a trip (e.g. *"7-day Japan trip under ₹2L"*).
-2. The query is sent into a LangGraph state machine.
-3. **Flight Agent** searches relevant routes via AviationStack.
-4. **Hotel Agent** finds accommodation options.
-5. **Itinerary Agent** builds a day-by-day plan.
-6. **Final Agent** synthesizes everything into one cohesive travel plan.
-7. Results stream live to the UI and are saved as Markdown/JSON.
+## Roadmap
+- [ ] Real fares API · [ ] PDF / .ics export · [ ] Auth + per-user history · [ ] Response caching · [ ] Larger eval set
 
-## ⚠️ Known Limitations
-
-- AviationStack's free tier has limited route coverage — some real-world routes (especially uncommon long-haul ones) may return no results.
-- City-to-airport-code mapping is a small manual lookup table (`CITY_TO_IATA` in `flight_tool.py`) — extend as needed.
-
-## 📌 Roadmap
-
-- [ ] Expand city → IATA code coverage
-- [ ] Add hotel booking API integration
-- [ ] Deploy with managed Postgres (Neon/Supabase)
-- [ ] Add authentication for multi-user history
-
-## 📄 License
-
-MIT
+MIT License

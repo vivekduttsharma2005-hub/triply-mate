@@ -1,0 +1,9 @@
+.git
+.env
+.venv/
+__pycache__/
+*.pyc
+travel_plans/
+eval/results/
+.pytest_cache/
+tests/

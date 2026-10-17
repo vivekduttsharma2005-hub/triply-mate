@@ -1,13 +1,21 @@
-langgraph
-langgraph-checkpoint-postgres
-langchain
-langchain-openai
-langchain-groq
-langchain-community
-langchain-tavily
-psycopg[binary,pool]
-psycopg_pool
+# Core
+langgraph>=0.6
+langgraph-checkpoint-postgres>=2.0
+langchain-core>=0.3
+langchain-groq>=0.3
+pydantic>=2.5
 python-dotenv
+# Data tools
 tavily-python
 requests
-streamlit
+httpx>=0.27
+airportsdata
+# Postgres memory (pool = recovers from dropped idle connections)
+psycopg[binary,pool]>=3.2
+# Tests (offline Groq tool-schema check)
+jsonschema
+# Apps
+streamlit>=1.40
+fastapi>=0.110
+uvicorn>=0.29
+# Optional tracing: pip install langfuse, then set LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY

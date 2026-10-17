@@ -1,0 +1,22 @@
+[
+  {"id": 1,  "kind": "easy",       "query": "5 day Goa trip from Jaipur under 40000 rupees", "days": 5, "budget_inr": 40000},
+  {"id": 2,  "kind": "easy",       "query": "3 day Manali trip from Delhi under 15000", "days": 3, "budget_inr": 15000},
+  {"id": 3,  "kind": "easy",       "query": "4 day Udaipur trip from Mumbai under 30000", "days": 4, "budget_inr": 30000},
+  {"id": 4,  "kind": "easy",       "query": "2 day Rishikesh trip from Delhi under 8000", "days": 2, "budget_inr": 8000},
+  {"id": 5,  "kind": "easy",       "query": "4 day Kerala trip from Bangalore under 35000", "days": 4, "budget_inr": 35000},
+  {"id": 6,  "kind": "easy",       "query": "3 day Jaipur weekend from Delhi under 12000", "days": 3, "budget_inr": 12000},
+  {"id": 7,  "kind": "hard",       "query": "7 day Japan trip from Delhi under 2 lakh", "days": 7, "budget_inr": 200000},
+  {"id": 8,  "kind": "hard",       "query": "5 day Bali trip from Mumbai under 80000", "days": 5, "budget_inr": 80000},
+  {"id": 9,  "kind": "hard",       "query": "6 day Bangkok and Pattaya trip from Kolkata under 70000", "days": 6, "budget_inr": 70000},
+  {"id": 10, "kind": "hard",       "query": "4 day Dubai trip from Hyderabad under 90000", "days": 4, "budget_inr": 90000},
+  {"id": 11, "kind": "hard",       "query": "5 day Paris trip from Delhi under 2.5 lakh", "days": 5, "budget_inr": 250000},
+  {"id": 12, "kind": "group",      "query": "4 day Goa trip for 4 friends from Pune under 80000 total", "days": 4, "budget_inr": 80000},
+  {"id": 13, "kind": "tiny_budget","query": "7 day Japan trip from Delhi under 5000", "days": 7, "budget_inr": 5000, "expect_over_budget": true},
+  {"id": 14, "kind": "tiny_budget","query": "5 day Paris trip from Mumbai under 10000", "days": 5, "budget_inr": 10000, "expect_over_budget": true},
+  {"id": 15, "kind": "typo",       "query": "4 day trip to Udaypur from Dehli under 25000", "days": 4, "budget_inr": 25000},
+  {"id": 16, "kind": "typo",       "query": "3 dya Mnali trip from Chandigarh under 12000", "days": 3, "budget_inr": 12000},
+  {"id": 17, "kind": "no_budget",  "query": "6 day Singapore trip from Chennai", "days": 6, "budget_inr": null},
+  {"id": 18, "kind": "missing",    "query": "5 day Goa trip under 40000", "expect_clarify": true, "expect_question_contains": "travelling from"},
+  {"id": 19, "kind": "missing",    "query": "Goa trip from Jaipur under 40000", "expect_clarify": true, "expect_question_contains": "How many days"},
+  {"id": 20, "kind": "missing",    "query": "plan a 4 day trip from Pune under 20000", "expect_clarify": true, "expect_question_contains": "Where would you like"}
+]

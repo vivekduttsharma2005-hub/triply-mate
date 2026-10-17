@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 travel_plans/
 .streamlit/secrets.toml
+.pytest_cache/
+eval/results/
