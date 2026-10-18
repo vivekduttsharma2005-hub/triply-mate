@@ -14,6 +14,7 @@ airportsdata
 psycopg[binary,pool]>=3.2
 # Tests (offline Groq tool-schema check)
 jsonschema
+pyyaml
 # Apps
 streamlit>=1.40
 fastapi>=0.110

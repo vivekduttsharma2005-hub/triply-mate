@@ -104,12 +104,35 @@ def summarize(results: list, label: str) -> dict:
     }
 
 
+README = Path(__file__).resolve().parent.parent / "README.md"
+EVAL_START, EVAL_END = "<!-- EVAL:START -->", "<!-- EVAL:END -->"
+EVAL_HEADER = ["| Version | Model | Pass rate | Avg latency | Date |", "|---|---|---|---|---|"]
+
+
+def update_readme(summary: dict, model: str, path: Path = README, today: str = None) -> bool:
+    """Write this run's REAL numbers into the README table between the EVAL markers. Same label = replace the row."""
+    text = path.read_text(encoding="utf-8")
+    if EVAL_START not in text or EVAL_END not in text:
+        return False
+    head, rest = text.split(EVAL_START, 1)
+    body, tail = rest.split(EVAL_END, 1)
+    rows = [l for l in body.strip().splitlines()
+            if l.startswith("|") and not l.startswith("| Version") and not l.startswith("|---") and "not run yet" not in l]
+    label = summary["label"]
+    rows = [r for r in rows if not r.startswith(f"| {label} |")]
+    when = today or f"{datetime.now():%Y-%m-%d}"
+    rows.append(f"| {label} | {model} | {summary['passed']} / {summary['total']} | {summary['avg_seconds']} s | {when} |")
+    path.write_text(head + EVAL_START + "\n" + "\n".join(EVAL_HEADER + rows) + "\n" + EVAL_END + tail, encoding="utf-8")
+    return True
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--label", default="run")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--sleep", type=float, default=3.0, help="seconds between cases (Groq free tier rate limits)")
     ap.add_argument("--judge", action="store_true", help="also score plans with an LLM judge")
+    ap.add_argument("--update-readme", action="store_true", help="write the real numbers into the README table")
     args = ap.parse_args()
 
     from langchain_groq import ChatGroq
@@ -141,6 +164,9 @@ def main():
           + (f" · judge {s['avg_judge_score']}/5" if s["avg_judge_score"] else ""))
     print(f"\n| Version | Pass rate | Avg latency |\n|---|---|---|\n| {s['label']} | {s['passed']} / {s['total']} | {s['avg_seconds']} s |")
     print(f"\nSaved {out}")
+    if args.update_readme:
+        model = os.getenv("GROQ_MODEL", app_main.DEFAULT_MODEL)
+        print("README table updated." if update_readme(s, model) else "README has no EVAL markers; table not updated.")
 
 
 if __name__ == "__main__":

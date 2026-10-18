@@ -48,19 +48,22 @@ If a tool fails, the plan says so. No flights, hotels or links are fabricated.
 ## Evaluation
 
 20 prompts in `eval/cases.json` (easy, hard, impossible budgets, typos, missing info, groups, no budget).
-A case passes only if: total ≤ budget **and** itinerary has the right number of days **and** flights/hotels exist
+A case passes only if: total ≤ budget **and** itinerary has the right number of days **and** flights/hotels exist **and** nothing is missing from the estimate
 (impossible budgets pass only if the plan honestly says it is over budget; "missing info" cases pass only if the agent asks the right question).
 
 ```bash
-python eval/run_eval.py --label "Parallel + budget loop" --sleep 5
+python eval/run_eval.py --label "Improved" --sleep 5 --update-readme
 ```
 
-| Version | Pass rate | Avg latency |
-|---|---|---|
-| Original (sequential, free text) | _run on commit `ac85442`_ | _…_ |
-| Parallel + budget loop + clarify | _run `eval/run_eval.py`_ | _…_ |
+`--update-readme` writes the **measured** numbers into the table below (nothing is typed by hand).
 
-_Fill this table with your own numbers. Fares are LLM estimates, so "within budget" means within budget **by estimate**. The optional `--judge` score comes from an LLM and is only a rough signal._
+<!-- EVAL:START -->
+| Version | Model | Pass rate | Avg latency | Date |
+|---|---|---|---|---|
+| _not run yet_ | | | | |
+<!-- EVAL:END -->
+
+_Fares are LLM estimates, so "within budget" means within budget **by estimate**. A case also fails if it only fits the budget because activities, flights or hotels were left out. The optional `--judge` score comes from an LLM and is only a rough signal._
 
 ## Setup
 
@@ -92,6 +95,16 @@ uvicorn api:app --port 8000
 TRIPLY_API_URL=http://localhost:8000 streamlit run frontend.py
 ```
 Tests: `pytest -q` · Docker: `docker build -t triply-mate . && docker run -p 8000:8000 --env-file .env triply-mate`
+
+## Deploy on Render
+`render.yaml` is included, so: Render dashboard → **New → Blueprint** → pick this repo → fill the secret values it asks for
+(`GROQ_API_KEY`, `TAVILY_API_KEY`, optional `AVIATIONSTACK_API_KEY` and `DATABASE_URL`). The app starts with
+`streamlit run frontend.py` and is health-checked at `/_stcore/health`.
+Never put keys in the repo: set them in Render's Environment tab.
+
+## Observability: what is and is not here
+Included (LLMOps basics): per-node timing logs, LLM-call and token counts per run, a 20-case evaluation harness, 85+ offline tests in CI, optional Langfuse tracing.
+**Not included:** alerting, dashboards, drift monitoring, or automated incident response. Those would be the next step for production.
 
 ## Known limitations
 - No fare API: fares are estimates. A real fares source (e.g. Amadeus) is the biggest accuracy upgrade.

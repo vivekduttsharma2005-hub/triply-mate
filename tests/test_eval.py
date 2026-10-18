@@ -81,3 +81,46 @@ def test_partial_plan_that_only_fits_the_budget_by_omission_is_a_FAIL():
 
     r = run_eval.run_case(main.build_graph(ZeroCost(), InMemorySaver()), case())
     assert r["checks"]["budget"] is True and r["checks"]["complete"] is False and not r["passed"]
+
+
+README_TEMPLATE = "intro\n<!-- EVAL:START -->\n| Version | Model | Pass rate | Avg latency | Date |\n|---|---|---|---|---|\n| _not run yet_ | | | | |\n<!-- EVAL:END -->\noutro\n"
+
+
+def test_update_readme_writes_real_numbers_and_keeps_surrounding_text(tmp_path):
+    p = tmp_path / "README.md"
+    p.write_text(README_TEMPLATE, encoding="utf-8")
+    ok = run_eval.update_readme({"label": "Improved", "passed": 17, "total": 20, "avg_seconds": 31.4}, "m/x", p, today="2026-10-18")
+    out = p.read_text(encoding="utf-8")
+    assert ok and "| Improved | m/x | 17 / 20 | 31.4 s | 2026-10-18 |" in out
+    assert "not run yet" not in out and out.startswith("intro") and out.endswith("outro\n")
+
+
+def test_update_readme_replaces_same_label_and_appends_new_ones(tmp_path):
+    p = tmp_path / "README.md"
+    p.write_text(README_TEMPLATE, encoding="utf-8")
+    run_eval.update_readme({"label": "A", "passed": 10, "total": 20, "avg_seconds": 50.0}, "m", p, today="d1")
+    run_eval.update_readme({"label": "B", "passed": 15, "total": 20, "avg_seconds": 40.0}, "m", p, today="d2")
+    run_eval.update_readme({"label": "A", "passed": 12, "total": 20, "avg_seconds": 45.0}, "m", p, today="d3")
+    out = p.read_text(encoding="utf-8")
+    assert out.count("| A |") == 1 and "12 / 20" in out and "10 / 20" not in out and "| B |" in out
+
+
+def test_update_readme_without_markers_does_nothing(tmp_path):
+    p = tmp_path / "README.md"
+    p.write_text("no markers here", encoding="utf-8")
+    assert run_eval.update_readme({"label": "A", "passed": 1, "total": 2, "avg_seconds": 1.0}, "m", p) is False
+    assert p.read_text(encoding="utf-8") == "no markers here"
+
+
+def test_real_readme_has_the_markers():
+    assert run_eval.EVAL_START in run_eval.README.read_text(encoding="utf-8")
+
+
+def test_render_yaml_is_valid_and_never_contains_secrets():
+    import yaml
+    cfg = yaml.safe_load((run_eval.README.parent / "render.yaml").read_text(encoding="utf-8"))
+    svc = cfg["services"][0]
+    assert "streamlit run frontend.py" in svc["startCommand"] and svc["healthCheckPath"] == "/_stcore/health"
+    secret_keys = {v["key"] for v in svc["envVars"] if v.get("sync") is False}
+    assert {"GROQ_API_KEY", "TAVILY_API_KEY"} <= secret_keys
+    assert not any(v.get("value", "").startswith(("gsk_", "tvly-")) for v in svc["envVars"])
