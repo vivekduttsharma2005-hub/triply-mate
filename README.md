@@ -60,7 +60,7 @@ python eval/run_eval.py --label "Improved" --sleep 5 --update-readme
 <!-- EVAL:START -->
 | Version | Model | Pass rate | Avg latency | Date |
 |---|---|---|---|---|
-| _not run yet_ | | | | |
+| Improved | openai/gpt-oss-120b | 3 / 3 | 37.9 s | 2026-10-18 |
 <!-- EVAL:END -->
 
 _Fares are LLM estimates, so "within budget" means within budget **by estimate**. A case also fails if it only fits the budget because activities, flights or hotels were left out. The optional `--judge` score comes from an LLM and is only a rough signal._
