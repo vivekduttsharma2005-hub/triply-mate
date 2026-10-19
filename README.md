@@ -114,6 +114,7 @@ python eval/run_eval.py --label "Improved" --sleep 5 --update-readme
 | Version | Model | Pass rate | Avg latency | Date |
 |---|---|---|---|---|
 | Improved | openai/gpt-oss-120b | 3 / 3 | 37.9 s | 2026-10-18 |
+| With budget loop | openai/gpt-oss-120b | 13 / 20 | 83.7 s | 2026-10-19 |
 <!-- EVAL:END -->
 
 _The row above is a quick **3-case run** out of the 20-case suite. Rerun the command above for a full result._
